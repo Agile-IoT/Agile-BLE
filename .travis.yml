@@ -1,0 +1,49 @@
+#-------------------------------------------------------------------------------
+# Copyright (C) 2017 Create-Net / FBK.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License 2.0
+# which accompanies this distribution, and is available at
+# https://www.eclipse.org/legal/epl-2.0/
+# 
+# SPDX-License-Identifier: EPL-2.0
+# 
+# Contributors:
+#     Create-Net / FBK - initial API and implementation
+#-------------------------------------------------------------------------------
+language: node_js
+node_js:
+  - "7"
+
+sudo: required
+
+services:
+  - docker
+
+cache:
+  directories:
+    - $HOME/docker-cache/
+
+env:
+  global:
+    - COMPONENT=agile-ble
+    - DOCKER_CACHE_FILE=/home/travis/docker-cache/cache.tar.gz
+  matrix:
+    - DOCKER_IMAGE=agileiot/$COMPONENT-x86_64
+      VERSIONIST=true
+      BASEIMAGE_BUILD=agileiot/intel-nuc-zulujdk:8-jdk-maven
+      BASEIMAGE_DEPLOY=agileiot/intel-nuc-zulujdk:8-jre
+
+before_install:
+  - source <(curl -s https://raw.githubusercontent.com/Agile-IoT/agile-ci-scripts/master/agile-ci-functions.sh)
+  - docker_upgrade
+  - cache_load
+  - bootstrap
+  - echo "Tagging the build with tag - $DOCKER_TAG"
+
+script:
+  - docker_build_if_needed
+  - cache_save
+
+after_success:
+  - docker_push_if_needed
+  - versionist_if_needed

@@ -1,0 +1,14 @@
+deps
+/agile-interfaces/target/
+.settings/
+.classpath
+.project
+.log
+.metadata/
+.recommenders
+*/*.log
+*.log
+nb*
+target
+/bin/
+/bluez-5.39/
