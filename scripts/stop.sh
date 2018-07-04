@@ -12,8 +12,10 @@
 #     Create-Net / FBK - initial API and implementation
 #-------------------------------------------------------------------------------
 
-ARG="$1"
+ARG="${1:-ble}"
 PATTERN="org.eclipse.agail.$ARG"
+PATTERN2="org.eclipse.agail.protocol.$ARG"
 
 echo "Send kill signal to $PATTERN"
 pkill -f $PATTERN
+pkill -f $PATTERN2
