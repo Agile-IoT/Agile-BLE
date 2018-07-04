@@ -68,6 +68,11 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 	private static final String AGILE_NEW_DEVICE_SIGNAL_PATH = "/org/eclipse/agail/NewDevice";
 
 	/**
+	 * DBus bus path for found new device signal
+	 */
+	private static final String AGILE_EXISTING_DEVICE_SIGNAL_PATH = "/org/eclipse/agail/ExistingDevice";
+
+	/**
 	 * DBus bus path for for new record/data reading
 	 */
 	private static final String AGILE_NEW_RECORD_SIGNAL_PATH = "/org/eclipse/agail/NewRecord";
@@ -142,7 +147,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		for (BluetoothDevice device : bleDevices) {
 			logger.info("{}({}) Conn:{} RSSI:{}", device.getName(), device.getAddress(), device.getConnected(), device.getRSSI());
 			if (device.getConnected()) {
-				DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME, device.getName(), CONNECTED);
+				DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME, device.getName(), CONNECTED, String.valueOf(System.currentTimeMillis()));
 				if (isNewDevice(deviceOverview)) {
 					deviceList.add(deviceOverview);
 					try {
@@ -297,10 +302,13 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 			for (BluetoothDevice device : list) {
 				if (device.getRSSI() != 0 || device.getConnected()) {
 					DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME,
-							device.getName(), AVAILABLE);
+							device.getName(), AVAILABLE , String.valueOf(System.currentTimeMillis()));
 					if (isNewDevice(deviceOverview)) {
 						logger.info("{}({}) Conn:{} RSSI:{}", device.getName(), device.getAddress(), device.getConnected(), device.getRSSI());
-						deviceList.add(deviceOverview);
+                        NewNotificationRssi rssiCallback = new NewNotificationRssi(device);
+                        device.enableRSSINotifications(rssiCallback);
+
+ 						deviceList.add(deviceOverview);
 						try {
 							ProtocolManager.FoundNewDeviceSignal foundNewDevSig = new ProtocolManager.FoundNewDeviceSignal(
 									AGILE_NEW_DEVICE_SIGNAL_PATH, deviceOverview);
@@ -579,7 +587,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 				Protocol.NewRecordSignal newRecordSignal = new Protocol.NewRecordSignal(AGILE_NEW_RECORD_SIGNAL_PATH,
 						lastRecord, address, profile);
 				logger.debug("Notifying {}", this);
-				logger.debug(record.toString());
+				logger.info("data:" + byteArrayToHex(record) );
 				connection.sendSignal(newRecordSignal);
 			} catch (DBusException e) {
 				e.printStackTrace();
@@ -609,6 +617,45 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		return ret;
 	}
 	
+    protected class NewNotificationRssi implements BluetoothNotification<Short> {
+        BluetoothDevice device;
+        DeviceOverview deviceOverview;
+
+        public NewNotificationRssi (BluetoothDevice device){
+            logger.info("rssi callback" + device.getName());
+            this.device=device;            
+        }
+
+        @Override
+        public void run(Short rssi) {
+            logger.info(device.getName()+" new rssi:" + rssi.toString() );
+            DeviceOverview updatedDeviceOverview= new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME,
+							device.getName(), AVAILABLE , String.valueOf(System.currentTimeMillis()));   
+            try {
+			    ProtocolManager.UpdateDeviceSignal foundDevSig = new ProtocolManager.UpdateDeviceSignal(
+					AGILE_EXISTING_DEVICE_SIGNAL_PATH, updatedDeviceOverview);
+			    connection.sendSignal(foundDevSig);
+			} catch (DBusException e) {
+				e.printStackTrace();
+			}
+        }
+        public BluetoothDevice getDevice(){
+            return device;
+        }
+    }
+
+    public void disableRssiNotifications(BluetoothDevice device1){
+        if (device1 != null) {
+            device1.disableRSSINotifications();
+        } else {
+            if (bleDevices != null && bleDevices.size() > 0)            
+			    for (BluetoothDevice device : bleDevices) {
+                    logger.info("Disable rssi "+device.getName());
+                    device.disableRSSINotifications();
+                }
+        }
+ 
+    }
 
 	// =========================UTILITY ==============
 
@@ -625,6 +672,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 	@Override
 	public void finalize() {
 		connection.disconnect();
+        disableRssiNotifications(null);
 	}
 
 	/**
@@ -642,39 +690,11 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		return true;
 	}
 
-		// ======================= Listing the sensors ==============
-	@Override
-	public Map<String, List<String>> GetSensors(String deviceAddress) throws DBusException {
-		logger.debug("BLE Protocol =================== Get Sensors ======================== {}", deviceAddress);
-		if(deviceAddress.isEmpty()) {
-			return null;
-		}
-		
-		Map<String, List<String>> servicesMap = new HashMap<>();
-		BluetoothDevice bleDevice = null;
-		List<BluetoothGattService> services = null;
-		
-		while(servicesMap.size() == 0) {
-			if (servicesMap.size() > 0) {
-				break;
-			}
-			bleDevice = (BluetoothDevice) bleManager.find(BluetoothType.DEVICE, null, deviceAddress,null);
-			services = bleDevice.getServices();
-					
-			for (BluetoothGattService bluetoothGattService : services) {
-				
-				List<String> characteristics = new ArrayList<>();
-				for (BluetoothGattCharacteristic charac : bluetoothGattService.getCharacteristics()) {
-					characteristics.add(charac.getUUID());
-					logger.debug("Device {}, service: {} ================ GATTCharacteristic: {} ", bleDevice.getName(), bluetoothGattService.getUUID(), charac.getUUID());
-				}
-				logger.debug("Device {}, service: {}", bleDevice.getName(), characteristics.size());
-				servicesMap.put(bluetoothGattService.getUUID(), characteristics);
-			}
-		}
-		
-		return servicesMap;
+	private String byteArrayToHex(byte[] a) {
+		 StringBuilder sb = new StringBuilder(a.length * 2);
+		 for(byte b: a)
+			sb.append(String.format("%02x", b));
+		 return sb.toString();
 	}
-
 
 }
