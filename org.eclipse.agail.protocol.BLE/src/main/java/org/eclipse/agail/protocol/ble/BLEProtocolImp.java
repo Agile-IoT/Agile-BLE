@@ -142,7 +142,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		for (BluetoothDevice device : bleDevices) {
 			logger.info("{}({}) Conn:{} RSSI:{}", device.getName(), device.getAddress(), device.getConnected(), device.getRSSI());
 			if (device.getConnected()) {
-				DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME, device.getName(), CONNECTED);
+				DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME, device.getName(), CONNECTED, String.valueOf(device.getRSSI()));
 				if (isNewDevice(deviceOverview)) {
 					deviceList.add(deviceOverview);
 					try {
@@ -297,7 +297,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 			for (BluetoothDevice device : list) {
 				if (device.getRSSI() != 0 || device.getConnected()) {
 					DeviceOverview deviceOverview = new DeviceOverview(device.getAddress(), AGILE_BLUETOOTH_BUS_NAME,
-							device.getName(), AVAILABLE);
+							device.getName(), AVAILABLE, String.valueOf(device.getRSSI()));
 					if (isNewDevice(deviceOverview)) {
 						logger.info("{}({}) Conn:{} RSSI:{}", device.getName(), device.getAddress(), device.getConnected(), device.getRSSI());
 						deviceList.add(deviceOverview);
