@@ -28,6 +28,8 @@ env:
     - COMPONENT=agile-ble
     - DOCKER_CACHE_FILE=/home/travis/docker-cache/cache.tar.gz
   matrix:
+    - DOCKER_IMAGE=agileiot/$COMPONENT-armv7l
+      QEMU_ARM_JAVA_WORKAROUND=true
     - DOCKER_IMAGE=agileiot/$COMPONENT-x86_64
       VERSIONIST=true
       BASEIMAGE_BUILD=agileiot/intel-nuc-zulujdk:8-jdk-maven
