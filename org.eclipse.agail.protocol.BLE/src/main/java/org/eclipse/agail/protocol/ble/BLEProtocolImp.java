@@ -28,12 +28,14 @@ import org.freedesktop.dbus.exceptions.DBusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.eclipse.agail.Protocol;
 import org.eclipse.agail.ProtocolManager;
 import org.eclipse.agail.object.AbstractAgileObject;
 import org.eclipse.agail.object.DeviceOverview;
 import org.eclipse.agail.object.DeviceStatusType;
 import org.eclipse.agail.object.StatusType;
+import org.eclipse.agail.protocols.BLEProtocol;
+import org.eclipse.agail.protocols.config.ProtocolConfig;
+
 import tinyb.BluetoothDevice;
 import tinyb.BluetoothException;
 import tinyb.BluetoothGattCharacteristic;
@@ -48,7 +50,7 @@ import tinyb.BluetoothType;
  * @author dagi
  *
  */
-public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
+public class BLEProtocolImp extends AbstractAgileObject implements BLEProtocol {
 
 	protected final Logger logger = LoggerFactory.getLogger(BLEProtocolImp.class);
 
@@ -81,6 +83,8 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 	 * Protocol driver name
 	 */
 	private static final String DRIVER_NAME = "BLE";
+	
+	private List<ProtocolConfig> protocolConfigs = new ArrayList<ProtocolConfig>();
 
 	// Device status
 	public static final String CONNECTED = "CONNECTED";
@@ -120,7 +124,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 	}
 
 	public static void main(String[] args) throws DBusException {
-		Protocol bleProtocol = new BLEProtocolImp();
+		new BLEProtocolImp();
 	}
 
 	public BLEProtocolImp() throws DBusException {
@@ -134,9 +138,6 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		}
 		logger.debug("Started BLE Protocol");
 
-		// fill initial list of devices
-//		List<BluetoothDevice> list = bleManager.getDevices();
-//		for (BluetoothDevice device : list) {
 		List<BluetoothDevice> list = bleManager.getDevices();
 		bleDevices = bleManager.getDevices();
 		for (BluetoothDevice device : bleDevices) {
@@ -269,6 +270,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 			}else{
 				return "RUNNING";
 			}	
+			
 		}
 		return "NONE";
 	}
@@ -576,7 +578,7 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		public void run(byte[] record) {
 			lastRecord = record;
  			try {
-				Protocol.NewRecordSignal newRecordSignal = new Protocol.NewRecordSignal(AGILE_NEW_RECORD_SIGNAL_PATH,
+ 				BLEProtocol.NewRecordSignal newRecordSignal = new BLEProtocol.NewRecordSignal(AGILE_NEW_RECORD_SIGNAL_PATH,
 						lastRecord, address, profile);
 				logger.debug("Notifying {}", this);
 				logger.debug(record.toString());
@@ -642,7 +644,6 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		return true;
 	}
 
-		// ======================= Listing the sensors ==============
 	@Override
 	public Map<String, List<String>> GetSensors(String deviceAddress) throws DBusException {
 		logger.debug("BLE Protocol =================== Get Sensors ======================== {}", deviceAddress);
@@ -676,5 +677,16 @@ public class BLEProtocolImp extends AbstractAgileObject implements Protocol {
 		return servicesMap;
 	}
 
+	@Override
+	public void SetConfiguration(List<ProtocolConfig> configs) {
+		protocolConfigs = configs;
+		logger.debug("Setting the configurations.");		
+	}
+
+	@Override
+	public List<ProtocolConfig> GetConfiguration() {
+		logger.debug("Getting the configurations. {}", protocolConfigs);
+		return protocolConfigs;
+	}
 
 }
